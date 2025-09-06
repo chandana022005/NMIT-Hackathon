@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String       @id @default(uuid())
+  name       String
+  email      String       @unique
+  password   String
+  createdAt  DateTime     @default(now()) @map("created_at")
+  messages   Message[]
+  projects   Project[]    @relation("ProjectCreator")
+  tasks      Task[]       @relation("TaskAssignee")
+  teamMember TeamMember[]
+
+  @@map("users")
+}
+
+model Project {
+  id          String       @id @default(uuid())
+  title       String
+  description String?
+  createdById String       @map("created_by")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  messages    Message[]
+  createdBy   User         @relation("ProjectCreator", fields: [createdById], references: [id])
+  tasks       Task[]
+  teamMembers TeamMember[]
+
+  @@map("projects")
+}
+
+model TeamMember {
+  id        String  @id @default(uuid())
+  userId    String  @map("user_id")
+  projectId String  @map("project_id")
+  role      String
+  project   Project @relation(fields: [projectId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
+
+  @@unique([userId, projectId])
+  @@map("team_members")
+}
+
+model Task {
+  id           String    @id @default(uuid())
+  title        String
+  description  String?
+  projectId    String    @map("project_id")
+  assignedToId String?   @map("assigned_to")
+  status       String
+  dueDate      DateTime? @map("due_date")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  assignedTo   User?     @relation("TaskAssignee", fields: [assignedToId], references: [id])
+  project      Project   @relation(fields: [projectId], references: [id])
+
+  @@map("tasks")
+}
+
+model Message {
+  id              String    @id @default(uuid())
+  projectId       String    @map("project_id")
+  userId          String    @map("user_id")
+  content         String
+  parentMessageId String?   @map("parent_message_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  parentMessage   Message?  @relation("MessageReplies", fields: [parentMessageId], references: [id])
+  replies         Message[] @relation("MessageReplies")
+  project         Project   @relation(fields: [projectId], references: [id])
+  user            User      @relation(fields: [userId], references: [id])
+
+  @@map("messages")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String
+  content   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
